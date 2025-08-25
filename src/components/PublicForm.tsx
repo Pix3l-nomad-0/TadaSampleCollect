@@ -117,6 +117,9 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
       
       for (const file of uploadedFiles) {
         const fileName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, '_')
+          .replace(/_+/g, '_')
+          .toLowerCase()
         // Create a clean folder name from form name
         const cleanFormName = form.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()
         const path = `${cleanFormName}_${formId.slice(0, 8)}/${cleanEmail}/${submissionId}/${fileName}`
