@@ -50,6 +50,7 @@ export interface Form {
   example_images: string[]
   created_at: string
   user_id: string
+  bucket_name: string
 }
 
 export interface FormField {
@@ -69,5 +70,6 @@ export interface FormSubmission {
   submitted_data: Record<string, any>
   uploaded_files: string[]
   user_email: string
+  user_folder?: string
   created_at: string
 }

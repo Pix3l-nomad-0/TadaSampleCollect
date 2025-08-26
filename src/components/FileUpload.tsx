@@ -133,7 +133,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           </div>
           <p className="text-xs text-gray-500 mt-2">
             {allowedTypes.map(type => 
-              type === 'image/*' ? 'Images' : 'Audio'
+              type === 'image/*' ? 'Images' : 
+              type === 'audio/*' ? 'Audio' : 
+              type === 'video/*' ? 'Videos' : 'Files'
             ).join(', ')} up to {maxFileSize}MB each
           </p>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { supabase, Form, FormField, uploadFile } from '../lib/supabase'
+import { supabase, Form, FormField } from '../lib/supabase'
+import { StorageAnonymizer } from '../utils/storageAnonymizer'
 import { FileUpload } from './FileUpload'
 import { CheckCircle, AlertCircle, FileText, Image as ImageIcon, Info } from 'lucide-react'
 
@@ -111,21 +112,45 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
       
       // Generate a unique submission ID
       const submissionId = crypto.randomUUID()
-      
-      // Create a clean email folder name
-      const cleanEmail = userEmail.replace(/[^a-zA-Z0-9@.-]/g, '_').toLowerCase()
+      let userFolder = ''
       
       for (const file of uploadedFiles) {
-        const fileName = file.name
-          .replace(/[^a-zA-Z0-9.-]/g, '_')
-          .replace(/_+/g, '_')
-          .toLowerCase()
-        // Create a clean folder name from form name
-        const cleanFormName = form.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()
-        const path = `${cleanFormName}_${formId.slice(0, 8)}/${cleanEmail}/${submissionId}/${fileName}`
-        
-        const fileUrl = await uploadFile(file, path, 'forms')
-        fileUrls.push(fileUrl)
+        try {
+          // Generate anonymous path using StorageAnonymizer
+          const anonymizer = StorageAnonymizer.getInstance()
+          const path = await anonymizer.generateAnonymousPath(
+            userEmail,
+            form!.name,
+            submissionId,
+            file.name
+          )
+          
+          // Extract user folder from the first file path
+          if (!userFolder) {
+            const pathParts = path.split('/')
+            if (pathParts.length >= 2) {
+              userFolder = pathParts[1] // Should be "user_xxxxxxxx"
+            }
+          }
+          
+          // Upload the file
+          const { data, error } = await supabase.storage
+            .from(form!.bucket_name || 'forms')
+            .upload(path, file, {
+              cacheControl: '3600',
+              upsert: false
+            })
+          
+          if (error) {
+            throw error
+          }
+          
+          // Store the file path instead of public URL since bucket is private
+          fileUrls.push(path)
+          
+        } catch (fileError) {
+          throw new Error(`Failed to upload file: ${file.name}`)
+        }
       }
 
       // Submit form data
@@ -135,14 +160,16 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
           id: submissionId,
           form_id: formId,
           submitted_data: formData,
-          uploaded_files: fileUrls,
-          user_email: userEmail
+          uploaded_files: fileUrls, // Now contains file paths instead of URLs
+          user_email: userEmail,
+          user_folder: userFolder
         })
 
       if (submitError) throw submitError
 
       setSubmitted(true)
     } catch (error: any) {
+      console.error('Form submission error:', error)
       setError(error.message)
     } finally {
       setSubmitting(false)
@@ -174,6 +201,7 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
       })
     }
   }
+  
   const handleFilesChange = (files: File[]) => {
     setUploadedFiles(files)
     
@@ -380,7 +408,9 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
 
                 <div className="mt-2 text-xs text-gray-500">
                   Allowed types: {form.allowed_file_types.map(type => 
-                    type === 'image/*' ? 'Images' : 'Audio'
+                    type === 'image/*' ? 'Images' : 
+                    type === 'audio/*' ? 'Audio' : 
+                    type === 'video/*' ? 'Videos' : 'Files'
                   ).join(', ')}
                 </div>
               </div>

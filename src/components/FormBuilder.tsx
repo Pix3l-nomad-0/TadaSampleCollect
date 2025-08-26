@@ -110,7 +110,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
             allowed_file_types: form.allowed_file_types,
             guidelines: form.guidelines,
             example_images: form.example_images,
-            bucket_name: null
+            bucket_name: 'forms'
           })
           .eq('id', formId)
           .select()
@@ -131,13 +131,37 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
           .insert({
             ...form,
             user_id: user.id,
-            bucket_name: null
+            bucket_name: 'forms'
           } as any)
           .select()
           .single()
 
         if (formError) throw formError
         savedForm = data
+
+        // Create form folder immediately
+        try {
+          const cleanFormName = form.name!.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').toLowerCase()
+          const placeholderPath = `${cleanFormName}/.placeholder`
+          
+          // Create a placeholder file to ensure the folder exists
+          const placeholderContent = new Blob([`This folder was created for form: ${form.name}\nCreated: ${new Date().toISOString()}`], { type: 'text/plain' })
+          
+          const { error: uploadError } = await supabase.storage
+            .from('forms')
+            .upload(placeholderPath, placeholderContent, {
+              cacheControl: '3600',
+              upsert: true
+            })
+          
+          if (uploadError) {
+            console.warn('Could not create form folder:', uploadError.message)
+          } else {
+            console.log(`Created folder for form: ${cleanFormName}`)
+          }
+        } catch (folderError) {
+          // Don't fail the form creation if folder creation fails
+        }
       }
 
       // Insert fields
@@ -223,7 +247,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
               {formId ? 'Edit Form' : 'Create New Form'}
             </h2>
             <p className="text-gray-600 mt-1">
-              Configure your data collection form
+              Build your custom form with fields and file upload capabilities
             </p>
           </div>
           <div className="flex space-x-3">
@@ -458,7 +482,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
                 Allowed File Types
               </label>
               <div className="space-y-2">
-                {['image/*', 'audio/*'].map((type) => (
+                {['image/*', 'audio/*', 'video/*'].map((type) => (
                   <label key={type} className="flex items-center">
                     <input
                       type="checkbox"
@@ -474,7 +498,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="ml-2 text-sm text-gray-700">
-                      {type === 'image/*' ? 'Images (JPG, PNG, GIF, etc.)' : 'Audio files (MP3, WAV, etc.)'}
+                      {type === 'image/*' ? 'Images (JPG, PNG, GIF, HEIC, etc.)' : 
+                       type === 'audio/*' ? 'Audio files (MP3, WAV, etc.)' : 
+                       'Video files (MP4, MOV, AVI, etc.)'}
                     </span>
                   </label>
                 ))}
