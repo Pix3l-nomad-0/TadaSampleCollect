@@ -312,7 +312,7 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
               {/* User Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Ta-da Email Address
+                  Your Email Address
                   <span className="text-red-500 ml-1">*</span>
                 </label>
                 <input
