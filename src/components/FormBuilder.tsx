@@ -19,7 +19,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
     max_file_size: 10,
     allowed_file_types: ['image/*', 'audio/*'],
     guidelines: '',
-    example_images: []
+    example_images: [],
+    example_image_captions: []
   })
   const [fields, setFields] = useState<Partial<FormField>[]>([])
   const [loading, setLoading] = useState(false)
@@ -110,6 +111,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
             allowed_file_types: form.allowed_file_types,
             guidelines: form.guidelines,
             example_images: form.example_images,
+            example_image_captions: form.example_image_captions,
             bucket_name: 'forms'
           })
           .eq('id', formId)
@@ -210,7 +212,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
   const addExampleImage = () => {
     setForm({
       ...form,
-      example_images: [...(form.example_images || []), '']
+      example_images: [...(form.example_images || []), ''],
+      example_image_captions: [...(form.example_image_captions || []), '']
     })
   }
 
@@ -220,10 +223,17 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
     setForm({ ...form, example_images: newImages })
   }
 
+  const updateExampleImageCaption = (index: number, caption: string) => {
+    const newCaptions = [...(form.example_image_captions || [])]
+    newCaptions[index] = caption
+    setForm({ ...form, example_image_captions: newCaptions })
+  }
+
   const removeExampleImage = (index: number) => {
     setForm({
       ...form,
-      example_images: form.example_images?.filter((_, i) => i !== index) || []
+      example_images: form.example_images?.filter((_, i) => i !== index) || [],
+      example_image_captions: form.example_image_captions?.filter((_, i) => i !== index) || []
     })
   }
 
@@ -550,20 +560,29 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
               
               <div className="space-y-3">
                 {(form.example_images || []).map((url, index) => (
-                  <div key={index} className="flex space-x-2">
+                  <div key={index} className="space-y-2">
+                    <div className="flex space-x-2">
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={(e) => updateExampleImage(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      <button
+                        onClick={() => removeExampleImage(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                     <input
-                      type="url"
-                      value={url}
-                      onChange={(e) => updateExampleImage(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="https://example.com/image.jpg"
+                      type="text"
+                      value={form.example_image_captions?.[index] || ''}
+                      onChange={(e) => updateExampleImageCaption(index, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Optional caption for this image..."
                     />
-                    <button
-                      onClick={() => removeExampleImage(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                   </div>
                 ))}
               </div>

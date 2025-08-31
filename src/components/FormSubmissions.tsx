@@ -4,6 +4,7 @@ import { StorageAnonymizer } from '../utils/storageAnonymizer'
 import { ArrowLeft, Download, Calendar, User, FileText, Image, Volume2, ExternalLink, X, ZoomIn, Grid, Archive } from 'lucide-react'
 import { AuthenticatedImage } from './AuthenticatedImage'
 import { AuthenticatedVideo } from './AuthenticatedVideo'
+import { MediaFilePlayer } from './MediaFilePlayer'
 import JSZip from 'jszip'
 
 interface FormSubmissionsProps {

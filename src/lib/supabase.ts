@@ -48,6 +48,7 @@ export interface Form {
   allowed_file_types: string[]
   guidelines: string
   example_images: string[]
+  example_image_captions: string[]
   created_at: string
   user_id: string
   bucket_name: string

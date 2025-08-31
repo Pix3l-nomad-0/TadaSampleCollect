@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { supabase, Form, FormField } from '../lib/supabase'
 import { StorageAnonymizer } from '../utils/storageAnonymizer'
 import { FileUpload } from './FileUpload'
-import { CheckCircle, AlertCircle, FileText, Image as ImageIcon, Info } from 'lucide-react'
+import { ImageModal } from './ImageModal'
+import { CheckCircle, AlertCircle, FileText, Info, ZoomIn } from 'lucide-react'
 
 interface PublicFormProps {
   formId: string
@@ -19,42 +20,44 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   useEffect(() => {
-    loadForm()
-  }, [formId])
+    const load = async () => {
+      try {
+        const [formResponse, fieldsResponse] = await Promise.all([
+          supabase
+            .from('forms')
+            .select('*')
+            .eq('id', formId)
+            .eq('active', true)
+            .maybeSingle(),
+          supabase
+            .from('form_fields')
+            .select('*')
+            .eq('form_id', formId)
+            .order('order_index')
+        ])
 
-  const loadForm = async () => {
-    try {
-      const [formResponse, fieldsResponse] = await Promise.all([
-        supabase
-          .from('forms')
-          .select('*')
-          .eq('id', formId)
-          .eq('active', true)
-          .maybeSingle(),
-        supabase
-          .from('form_fields')
-          .select('*')
-          .eq('form_id', formId)
-          .order('order_index')
-      ])
+        if (formResponse.error) throw formResponse.error
+        if (!formResponse.data) {
+          throw new Error('Form not found or inactive')
+        }
+        
+        if (fieldsResponse.error) throw fieldsResponse.error
 
-      if (formResponse.error) throw formResponse.error
-      if (!formResponse.data) {
-        throw new Error('Form not found or inactive')
+        setForm(formResponse.data)
+        setFields(fieldsResponse.data || [])
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err))
+      } finally {
+        setLoading(false)
       }
-      
-      if (fieldsResponse.error) throw fieldsResponse.error
-
-      setForm(formResponse.data)
-      setFields(fieldsResponse.data || [])
-    } catch (error: any) {
-      setError(error.message)
-    } finally {
-      setLoading(false)
     }
-  }
+
+    load()
+  }, [formId])
 
   const validateForm = () => {
     const errors: Record<string, string> = {}
@@ -134,7 +137,7 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
           }
           
           // Upload the file
-          const { data, error } = await supabase.storage
+          const { error } = await supabase.storage
             .from(form!.bucket_name || 'forms')
             .upload(path, file, {
               cacheControl: '3600',
@@ -148,7 +151,7 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
           // Store the file path instead of public URL since bucket is private
           fileUrls.push(path)
           
-        } catch (fileError) {
+        } catch {
           throw new Error(`Failed to upload file: ${file.name}`)
         }
       }
@@ -168,9 +171,9 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
       if (submitError) throw submitError
 
       setSubmitted(true)
-    } catch (error: any) {
-      console.error('Form submission error:', error)
-      setError(error.message)
+    } catch (err: unknown) {
+      console.error('Form submission error:', err)
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setSubmitting(false)
     }
@@ -213,6 +216,48 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
         return newErrors
       })
     }
+  }
+
+  const openImageModal = (index: number) => {
+    console.log('Opening image modal for index:', index)
+    console.log('Current form:', form)
+    console.log('Example images:', form?.example_images)
+    setCurrentImageIndex(index)
+    setImageModalOpen(true)
+    console.log('Modal state set to open')
+  }
+
+  // Add test images if none exist (for testing purposes)
+  const getExampleImages = () => {
+    if (form?.example_images && form.example_images.length > 0) {
+      return form.example_images
+    }
+    // Return test images if no examples exist
+    return [
+      'https://picsum.photos/400/300?random=1',
+      'https://picsum.photos/400/300?random=2',
+      'https://picsum.photos/400/300?random=3'
+    ]
+  }
+
+  const getExampleCaptions = () => {
+    if (form?.example_image_captions && form.example_image_captions.length > 0) {
+      return form.example_image_captions
+    }
+    // Return test captions if no examples exist
+    return [
+      'Image d\'exemple 1 (test)',
+      'Image d\'exemple 2 (test)',
+      'Image d\'exemple 3 (test)'
+    ]
+  }
+
+  const closeImageModal = () => {
+    setImageModalOpen(false)
+  }
+
+  const navigateImage = (index: number) => {
+    setCurrentImageIndex(index)
   }
 
   if (loading) {
@@ -285,22 +330,30 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
                     dangerouslySetInnerHTML={{ __html: form.guidelines }}
                   />
                   
-                  {form.example_images.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-blue-900 mb-2">Examples:</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {form.example_images.map((imageUrl, index) => (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-blue-900 mb-2">Examples:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {getExampleImages().map((imageUrl, index) => (
+                        <div key={index} className="relative group cursor-pointer">
                           <img
-                            key={index}
                             src={imageUrl}
                             alt={`Example ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg border"
+                            className="w-full h-24 object-cover rounded-lg border transition-transform group-hover:scale-105"
                             loading="lazy"
+                            onClick={() => openImageModal(index)}
                           />
-                        ))}
-                      </div>
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center pointer-events-none">
+                              <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          {getExampleCaptions()[index] && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg truncate pointer-events-none">
+                              {getExampleCaptions()[index]}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -435,6 +488,16 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
           </form>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        isOpen={imageModalOpen}
+        images={getExampleImages()}
+        captions={getExampleCaptions()}
+        currentIndex={currentImageIndex}
+        onClose={closeImageModal}
+        onNavigate={navigateImage}
+      />
     </div>
   )
 }
