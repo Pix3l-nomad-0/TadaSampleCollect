@@ -227,29 +227,22 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
     console.log('Modal state set to open')
   }
 
-  // Add test images if none exist (for testing purposes)
-  const getExampleImages = () => {
+  // Return example images defined on the form, or an empty array if none were provided.
+  // We deliberately avoid injecting random placeholder images here so the UI only
+  // shows examples that were explicitly configured in the form setup.
+  const getExampleImages = (): string[] => {
     if (form?.example_images && form.example_images.length > 0) {
       return form.example_images
     }
-    // Return test images if no examples exist
-    return [
-      'https://picsum.photos/400/300?random=1',
-      'https://picsum.photos/400/300?random=2',
-      'https://picsum.photos/400/300?random=3'
-    ]
+    return []
   }
 
-  const getExampleCaptions = () => {
+  // Return captions defined on the form, or an empty array when none exist.
+  const getExampleCaptions = (): string[] => {
     if (form?.example_image_captions && form.example_image_captions.length > 0) {
       return form.example_image_captions
     }
-    // Return test captions if no examples exist
-    return [
-      'Image d\'exemple 1 (test)',
-      'Image d\'exemple 2 (test)',
-      'Image d\'exemple 3 (test)'
-    ]
+    return []
   }
 
   const closeImageModal = () => {
