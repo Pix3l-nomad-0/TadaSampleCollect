@@ -35,6 +35,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, imageUrl, fileName, onC
           filePath={imageUrl}
           fileName={fileName}
           className="max-w-full max-h-[80vh] object-contain rounded-lg"
+          shouldLoad={true}
         />
         <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-b-lg">
           <p className="text-sm truncate">{fileName}</p>
@@ -50,6 +51,8 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
   const [submissions, setSubmissions] = useState<FormSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<{ url: string; fileName: string } | null>(null)
+  // Track which submissions have image loading enabled
+  const [loadImagesForSubmission, setLoadImagesForSubmission] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadData()
@@ -387,10 +390,20 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
                     {/* Images Grid - Prominent */}
                     {submission.uploaded_files.length > 0 && (
                       <div className="lg:col-span-2">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
-                          <Grid className="w-3 h-3 mr-1" />
-                          Images ({submission.uploaded_files.filter(url => getFileType(url) === 'image').length})
-                        </h4>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-gray-900 flex items-center">
+                            <Grid className="w-3 h-3 mr-1" />
+                            Images ({submission.uploaded_files.filter(url => getFileType(url) === 'image').length})
+                          </h4>
+                          <div>
+                            <button
+                              onClick={() => setLoadImagesForSubmission(prev => ({ ...prev, [submission.id]: !prev[submission.id] }))}
+                              className="text-sm px-2 py-1 border rounded text-blue-600 hover:bg-blue-50"
+                            >
+                              {loadImagesForSubmission[submission.id] ? 'Unload images' : 'Load images'}
+                            </button>
+                          </div>
+                        </div>
                         <div className="grid grid-cols-5 gap-2">
                           {submission.uploaded_files.map((fileUrl, index) => {
                             const fileType = getFileType(fileUrl)
@@ -403,6 +416,7 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
                                     filePath={fileUrl}
                                     fileName={fileName}
                                     className="w-full h-full object-cover rounded border border-gray-200 cursor-pointer hover:border-blue-300 transition-colors"
+                                    shouldLoad={!!loadImagesForSubmission[submission.id]}
                                   />
                                   <button
                                     onClick={() => setSelectedImage({ url: fileUrl, fileName })}

@@ -18,6 +18,22 @@ export class StorageAnonymizer {
     }
     return StorageAnonymizer.instance
   }
+
+  /**
+   * Return a cached signed URL for a file path if still valid, otherwise null
+   */
+  getCachedSignedUrl(filePath: string): string | null {
+    try {
+      const cacheItem = this.signedUrlCache.get(filePath)
+      const now = Date.now()
+      if (cacheItem && cacheItem.expiresAt - 60000 > now) {
+        return cacheItem.url
+      }
+    } catch (err) {
+      console.warn('StorageAnonymizer: getCachedSignedUrl failed', err)
+    }
+    return null
+  }
   
   /**
    * Generate a simple hash-based UUID for email (for anonymous users)
@@ -125,6 +141,15 @@ export class StorageAnonymizer {
     const storageMatch = urlOrPath.match(/\/storage\/v1\/object\/(?:public|sign|authenticated)\/forms\/(.+?)(?:\?.*)?$/)
     if (storageMatch) {
       return storageMatch[1]
+    }
+
+    // Fallback: if the URL contains '/forms/' return the part after it
+    const idx = urlOrPath.indexOf('/forms/')
+    if (idx !== -1) {
+      const after = urlOrPath.substring(idx + '/forms/'.length)
+      // strip query params
+      const qIdx = after.indexOf('?')
+      return qIdx === -1 ? after : after.substring(0, qIdx)
     }
     
     console.warn('StorageAnonymizer: Could not extract file path from URL:', urlOrPath)

@@ -7,13 +7,15 @@ interface AuthenticatedImageProps {
   fileUrl?: string
   fileName: string
   className?: string
+  shouldLoad?: boolean
 }
 
 export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
   filePath,
   fileUrl,
   fileName,
-  className = ''
+  className = '',
+  shouldLoad = false
 }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,10 +45,11 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
       try {
         setLoading(true)
         setError(false)
-        
-        const anonymizer = StorageAnonymizer.getInstance()
-  let actualFilePath: string | null = null
-        
+
+  const anonymizer = StorageAnonymizer.getInstance()
+  console.log('AuthenticatedImage: start load', { filePath, fileUrl, fileName, shouldLoad })
+        let actualFilePath: string | null = null
+
         // Always extract the relative file path from either prop
         if (filePath) {
           actualFilePath = anonymizer.extractFilePathFromUrl(filePath)
@@ -58,30 +61,52 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
           setLoading(false)
           return
         }
-        
+
   if (!actualFilePath) {
           console.warn('AuthenticatedImage: Failed to extract valid file path', { filePath, fileUrl, fileName })
           setError(true)
           setLoading(false)
           return
         }
-        
-  // avoid noisy logs in busy lists
-        
+
+        // Determine whether the caller provided a full URL (fileUrl or filePath)
+        const providedUrl = fileUrl ? fileUrl : (filePath && filePath.startsWith('http') ? filePath : undefined)
+
+        // If a full URL was provided, use it immediately (no Supabase call needed)
+        if (providedUrl && providedUrl.startsWith('http')) {
+          setImageSrc(providedUrl)
+          setLoading(false)
+          return
+        }
+
+        // Try to use cached signed URL next. If not present, only fetch when shouldLoad is true
+        const cached = actualFilePath ? anonymizer.getCachedSignedUrl(actualFilePath) : null
+        if (cached) {
+          setImageSrc(cached)
+          setLoading(false)
+          return
+        }
+
+        if (!shouldLoad) {
+          // Do not request a signed URL yet; placeholder will be shown
+          setLoading(false)
+          return
+        }
+
+        // For HEIC files, download and convert
         if (isHeicFile(fileName)) {
-          // For HEIC files, download and convert
-          const signedUrl = await anonymizer.createSignedUrl(actualFilePath, 3600)
-          
+          const signedUrl = await anonymizer.createSignedUrl(actualFilePath)
+
           if (!signedUrl) {
             throw new Error('Failed to create signed URL for HEIC file')
           }
-          
+
           // Download the file
           const response = await fetch(signedUrl)
           if (!response.ok) {
             throw new Error(`Failed to download HEIC file: ${response.statusText}`)
           }
-          
+
           const fileData = await response.blob()
           const convertedBlob = await convertHeicToJpeg(fileData)
           const objectUrl = URL.createObjectURL(convertedBlob)
@@ -89,11 +114,11 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
           setImageSrc(objectUrl)
         } else {
           // For regular images, create signed URL if needed
-          // If fileUrl is already a full URL (e.g. public), use it directly
-          if (fileUrl && fileUrl.startsWith('http')) {
-            setImageSrc(fileUrl)
+          // If a full URL was provided (either via fileUrl or filePath), use it directly
+          if (providedUrl && providedUrl.startsWith('http')) {
+            setImageSrc(providedUrl)
           } else {
-            const signedUrl = await anonymizer.createSignedUrl(actualFilePath, 3600)
+            const signedUrl = await anonymizer.createSignedUrl(actualFilePath)
             if (!signedUrl) throw new Error('Failed to create signed URL')
             setImageSrc(signedUrl)
           }
@@ -124,9 +149,9 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         URL.revokeObjectURL(imageSrc)
       }
     }
-  // Note: imageSrc intentionally excluded to avoid re-running cleanup logic; effect runs when inputs change
+  // Re-run when shouldLoad changes so user toggles trigger loading
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filePath, fileUrl, fileName])
+  }, [filePath, fileUrl, fileName, shouldLoad])
 
   if (loading) {
     return (
