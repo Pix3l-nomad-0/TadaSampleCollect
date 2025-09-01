@@ -224,7 +224,7 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
         const fileUrl = submission.uploaded_files[i]
         console.log('FormSubmissions: Processing file for ZIP:', fileUrl)
         try {
-          const filePath = anonymizer.extractFilePathFromPublicUrl(fileUrl)
+          const filePath = anonymizer.extractFilePathFromUrl(fileUrl)
           if (!filePath) {
             console.warn('FormSubmissions: Could not extract file path from URL for ZIP:', fileUrl)
             continue

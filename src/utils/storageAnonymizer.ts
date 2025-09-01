@@ -2,8 +2,12 @@ import { supabase } from '../lib/supabase'
 
 export class StorageAnonymizer {
   private static instance: StorageAnonymizer
+  // Simple in-memory cache for signed URLs
+  private signedUrlCache: Map<string, { url: string; expiresAt: number }> = new Map()
   
   private constructor() {}
+
+
   
   /**
    * Get singleton instance
@@ -49,10 +53,25 @@ export class StorageAnonymizer {
   /**
    * Create a signed URL for a file path
    */
-  async createSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string | null> {
+  // Default expiry increased to 5 days (432000 seconds) to reduce frequent re-generation for thumbnails
+  async createSignedUrl(filePath: string, expiresIn: number = 432000): Promise<string | null> {
     if (!filePath || filePath.trim() === '') {
       console.warn('StorageAnonymizer: Empty filePath provided to createSignedUrl')
       return null
+    }
+
+  // Check cache first and return cached signed URL if still valid
+    try {
+      const cacheItem = this.signedUrlCache.get(filePath)
+      const now = Date.now()
+      // keep a small safety buffer (60s) to avoid returning about-to-expire URLs
+      if (cacheItem && cacheItem.expiresAt - 60000 > now) {
+        console.log('StorageAnonymizer: Returning cached signed URL for path:', filePath)
+        return cacheItem.url
+      }
+    } catch (err) {
+      // in case any cache check fails, continue to request a new signed URL
+      console.warn('StorageAnonymizer: Cache check failed', err)
     }
 
     try {
@@ -71,7 +90,15 @@ export class StorageAnonymizer {
         console.error('StorageAnonymizer: No signed URL returned for path:', filePath)
         return null
       }
-      
+
+      // compute expiresAt timestamp and store in cache
+      const expiresAt = Date.now() + expiresIn * 1000
+      try {
+        this.signedUrlCache.set(filePath, { url: data.signedUrl, expiresAt })
+      } catch (err) {
+        console.warn('StorageAnonymizer: Failed to write signed URL cache', err)
+      }
+
       console.log('StorageAnonymizer: Successfully created signed URL for:', filePath)
       return data?.signedUrl || null
     } catch (error) {

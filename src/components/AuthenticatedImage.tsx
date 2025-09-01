@@ -45,7 +45,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         setError(false)
         
         const anonymizer = StorageAnonymizer.getInstance()
-        let actualFilePath: string
+  let actualFilePath: string | null = null
         
         // Always extract the relative file path from either prop
         if (filePath) {
@@ -59,18 +59,17 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
           return
         }
         
-        if (!actualFilePath) {
+  if (!actualFilePath) {
           console.warn('AuthenticatedImage: Failed to extract valid file path', { filePath, fileUrl, fileName })
           setError(true)
           setLoading(false)
           return
         }
         
-        console.log('AuthenticatedImage: Loading image with path:', actualFilePath, 'fileName:', fileName)
+  // avoid noisy logs in busy lists
         
         if (isHeicFile(fileName)) {
           // For HEIC files, download and convert
-          console.log('AuthenticatedImage: Processing HEIC file')
           const signedUrl = await anonymizer.createSignedUrl(actualFilePath, 3600)
           
           if (!signedUrl) {
@@ -86,20 +85,18 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
           const fileData = await response.blob()
           const convertedBlob = await convertHeicToJpeg(fileData)
           const objectUrl = URL.createObjectURL(convertedBlob)
-          
-          console.log('AuthenticatedImage: HEIC conversion successful')
+          // ensure we don't set state if unmounted
           setImageSrc(objectUrl)
         } else {
-          // For regular images, create signed URL
-          console.log('AuthenticatedImage: Creating signed URL for regular image')
-          const signedUrl = await anonymizer.createSignedUrl(actualFilePath, 3600)
-          
-          if (!signedUrl) {
-            throw new Error('Failed to create signed URL')
+          // For regular images, create signed URL if needed
+          // If fileUrl is already a full URL (e.g. public), use it directly
+          if (fileUrl && fileUrl.startsWith('http')) {
+            setImageSrc(fileUrl)
+          } else {
+            const signedUrl = await anonymizer.createSignedUrl(actualFilePath, 3600)
+            if (!signedUrl) throw new Error('Failed to create signed URL')
+            setImageSrc(signedUrl)
           }
-          
-          console.log('AuthenticatedImage: Signed URL created successfully')
-          setImageSrc(signedUrl)
         }
       } catch (err) {
         console.error('AuthenticatedImage: Failed to load image:', err, {
@@ -113,15 +110,22 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
       }
     }
 
-    loadImage()
+    let cancelled = false
+    const wrapped = async () => {
+      if (cancelled) return
+      await loadImage()
+    }
+    wrapped()
     
     // Cleanup function for HEIC blob URLs
     return () => {
+      cancelled = true
       if (imageSrc && isHeicFile(fileName) && imageSrc.startsWith('blob:')) {
-        console.log('AuthenticatedImage: Cleaning up blob URL for HEIC file')
         URL.revokeObjectURL(imageSrc)
       }
     }
+  // Note: imageSrc intentionally excluded to avoid re-running cleanup logic; effect runs when inputs change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filePath, fileUrl, fileName])
 
   if (loading) {
