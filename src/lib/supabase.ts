@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export const uploadFile = async (file: File, path: string, bucketName: string = 'forms') => {
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from(bucketName)
     .upload(path, file, {
       cacheControl: '3600',
@@ -22,19 +22,19 @@ export const uploadFile = async (file: File, path: string, bucketName: string = 
   }
   
   // Get public URL
-  const { data: { publicUrl } } = supabase.storage
+  const { data: publicData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(path)
+  const publicUrl = publicData.publicUrl
   
   return publicUrl
 }
 
 export const getFileUrl = (path: string, bucketName: string = 'forms') => {
-  const { data: { publicUrl } } = supabase.storage
+  const { data: publicData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(path)
-  
-  return publicUrl
+  return publicData.publicUrl
 }
 
 // Types
@@ -49,6 +49,7 @@ export interface Form {
   guidelines: string
   example_images: string[]
   example_image_captions: string[]
+  files_required?: boolean
   created_at: string
   user_id: string
   bucket_name: string
@@ -68,7 +69,7 @@ export interface FormField {
 export interface FormSubmission {
   id: string
   form_id: string
-  submitted_data: Record<string, any>
+  submitted_data: Record<string, unknown>
   uploaded_files: string[]
   user_email: string
   user_folder?: string

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, Form } from '../lib/supabase'
-import { Edit, BarChart3, ExternalLink, ToggleLeft, ToggleRight, Trash2, Copy, CheckCircle } from 'lucide-react'
+import { Edit, BarChart3, ToggleLeft, ToggleRight, Trash2, Copy, CheckCircle } from 'lucide-react'
 
 interface FormListProps {
   onEditForm: (formId: string) => void

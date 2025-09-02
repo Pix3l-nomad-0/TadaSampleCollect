@@ -53,8 +53,9 @@ export const Auth: React.FC<AuthProps> = ({ onAuthChange }) => {
       }
       
       onAuthChange(true)
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      if (error instanceof Error) setError(error.message)
+      else setError(String(error))
     } finally {
       setLoading(false)
     }

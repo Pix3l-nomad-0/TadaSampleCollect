@@ -20,7 +20,8 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
     allowed_file_types: ['image/*', 'audio/*'],
     guidelines: '',
     example_images: [],
-    example_image_captions: []
+  example_image_captions: [],
+  files_required: false
   })
   const [fields, setFields] = useState<Partial<FormField>[]>([])
   const [loading, setLoading] = useState(false)
@@ -76,8 +77,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
 
       setForm(formData)
       setFields(fieldsData || [])
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      if (error instanceof Error) setError(error.message)
+      else setError(String(error))
     } finally {
       setLoading(false)
     }
@@ -109,6 +111,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
             max_file_count: form.max_file_count,
             max_file_size: form.max_file_size,
             allowed_file_types: form.allowed_file_types,
+            files_required: form.files_required || false,
             guidelines: form.guidelines,
             example_images: form.example_images,
             example_image_captions: form.example_image_captions,
@@ -133,8 +136,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
           .insert({
             ...form,
             user_id: user.id,
+            files_required: form.files_required || false,
             bucket_name: 'forms'
-          } as any)
+          } as Partial<Form>)
           .select()
           .single()
 
@@ -161,7 +165,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
           } else {
             console.log(`Created folder for form: ${cleanFormName}`)
           }
-        } catch (folderError) {
+        } catch {
           // Don't fail the form creation if folder creation fails
         }
       }
@@ -183,8 +187,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
       }
 
       onSaved()
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error: unknown) {
+      if (error instanceof Error) setError(error.message)
+      else setError(String(error))
     } finally {
       setLoading(false)
     }
@@ -299,7 +304,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id as any)}
+              onClick={() => setActiveTab(id as 'basic' | 'fields' | 'files' | 'guidelines')}
               className={`py-4 border-b-2 transition-colors ${
                 activeTab === id
                   ? 'border-blue-600 text-blue-600'
@@ -515,6 +520,18 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onSaved, onCan
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={form.files_required || false}
+                  onChange={(e) => setForm({ ...form, files_required: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Require at least one uploaded file to submit</span>
+              </label>
             </div>
           </div>
         )}

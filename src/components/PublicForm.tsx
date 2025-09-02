@@ -81,7 +81,12 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
       errors.files = `Maximum ${form.max_file_count} files allowed`
     }
 
-    uploadedFiles.forEach((file, index) => {
+    // If form requires files, ensure at least one file is uploaded
+    if (form && form.files_required && uploadedFiles.length === 0) {
+      errors.files = 'At least one file is required for this form'
+    }
+
+    uploadedFiles.forEach((file) => {
       if (file.size > (form?.max_file_size || 10) * 1024 * 1024) {
         errors.files = `File "${file.name}" exceeds ${form?.max_file_size}MB limit`
       }
@@ -429,7 +434,8 @@ export const PublicForm: React.FC<PublicFormProps> = ({ formId }) => {
               {/* File Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload Files
+                    Upload Files
+                    {form.files_required && <span className="text-red-500 ml-1">*</span>}
                   {form.max_file_count > 0 && (
                     <span className="text-gray-500 font-normal">
                       (Max {form.max_file_count} file{form.max_file_count !== 1 ? 's' : ''}, {form.max_file_size}MB each)

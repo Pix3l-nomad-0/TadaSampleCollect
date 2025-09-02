@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { supabase, Form, FormField, FormSubmission, getFileUrl } from '../lib/supabase'
+import { supabase, Form, FormField, FormSubmission } from '../lib/supabase'
 import { StorageAnonymizer } from '../utils/storageAnonymizer'
-import { ArrowLeft, Download, Calendar, User, FileText, Image, Volume2, ExternalLink, X, ZoomIn, Grid, Archive } from 'lucide-react'
+import { ArrowLeft, Download, Calendar, User, FileText, Volume2, X, ZoomIn, Grid, Archive } from 'lucide-react'
 import { AuthenticatedImage } from './AuthenticatedImage'
 import { AuthenticatedVideo } from './AuthenticatedVideo'
 import { MediaFilePlayer } from './MediaFilePlayer'
@@ -156,8 +156,7 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
             fileData.push('') // Empty URL
           }
           
-          const submissionDate = new Date(submission.created_at)
-          
+          // submissionDate intentionally unused (kept for potential future metadata)
           return [
             submission.id.slice(0, 8), // Short ID
             ...fields.map(field => submission.submitted_data[field.field_key] || ''),
@@ -379,7 +378,7 @@ export const FormSubmissions: React.FC<FormSubmissionsProps> = ({ formId, onBack
                                 {field.field_name}:
                               </dt>
                               <dd className="text-gray-900 flex-1 font-medium">
-                                {submission.submitted_data[field.field_key] || '-'}
+                                {String(submission.submitted_data[field.field_key] ?? '-')}
                               </dd>
                             </div>
                           ))}

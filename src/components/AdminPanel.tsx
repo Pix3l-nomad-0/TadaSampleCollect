@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import type { User } from '@supabase/supabase-js'
 import { FormBuilder } from './FormBuilder'
 import { FormList } from './FormList'
 import { FormSubmissions } from './FormSubmissions'
@@ -13,7 +14,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSignOut }) => {
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'submissions'>('list')
   const [editingFormId, setEditingFormId] = useState<string | null>(null)
   const [viewingSubmissionsFormId, setViewingSubmissionsFormId] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSignOut }) => {
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                {user?.email}
+                {user?.email ?? ''}
               </span>
               <button
                 onClick={handleSignOut}
